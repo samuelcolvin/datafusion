@@ -250,3 +250,23 @@ async fn test_parameter_invalid_types() -> Result<()> {
 );
     Ok(())
 }
+
+#[tokio::test]
+async fn interval_multiple() {
+    let ctx = SessionContext::new();
+    let results = ctx
+        .sql("SELECT 2 * INTERVAL '1' DAY")
+        .await
+        .unwrap()
+        .collect()
+        .await
+        .unwrap();
+    let expected = vec![
+        "+-----------------+",
+        "| INTERVAL DAY    |",
+        "+-----------------+",
+        "| 2 days          |",
+        "+-----------------+",
+    ];
+    assert_batches_eq!(expected, &results);
+}

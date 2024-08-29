@@ -225,15 +225,29 @@ impl<'a> TypeCoercionRewriter<'a> {
         op: Operator,
         right: Expr,
     ) -> Result<(Expr, Expr)> {
-        let (left_type, right_type) = get_input_types(
-            &left.get_type(self.schema)?,
-            &op,
-            &right.get_type(self.schema)?,
-        )?;
-        Ok((
-            left.cast_to(&left_type, self.schema)?,
-            right.cast_to(&right_type, self.schema)?,
-        ))
+        let left_input_type = left.get_type(self.schema)?;
+        let right_input_type = right.get_type(self.schema)?;
+
+        let (left_type, right_type) = get_input_types(&left_input_type, &op, &right_input_type)?;
+        if matches!(left_type, DataType::Interval(_)) && right_input_type.is_numeric() {
+            // if we get here and left is interval and right is numeric we must have passed
+            // through datafusion::expr-common::src::type_coercion::binary::numeric_interval_coercion
+            Ok((
+                left.cast_to(&left_type, self.schema)?,
+                right,
+            ))
+        } else if matches!(right_type, DataType::Interval(_)) && left_input_type.is_numeric() {
+            // same assumption as above
+            Ok((
+                left,
+                right.cast_to(&right_type, self.schema)?,
+            ))
+        } else {
+            Ok((
+                left.cast_to(&left_type, self.schema)?,
+                right.cast_to(&right_type, self.schema)?,
+            ))
+        }
     }
 }
 

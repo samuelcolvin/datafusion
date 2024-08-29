@@ -623,5 +623,11 @@ select
 ----
 true true true true true true
 
+### interval multiplication
+query P
+select 3 * interval '1 day'
+----
+0 years 0 mons 2 days 0 hours 0 mins 0.000000000 secs
+
 statement ok
 drop table t

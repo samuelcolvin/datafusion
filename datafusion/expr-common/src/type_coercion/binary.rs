@@ -182,6 +182,9 @@ fn signature(lhs: &DataType, op: &Operator, rhs: &DataType) -> Result<Signature>
             } else if let Some(numeric) = mathematics_numerical_coercion(lhs, rhs) {
                 // Numeric arithmetic, e.g. Int32 + Int32
                 Ok(Signature::uniform(numeric))
+            } else if let Some(interval) = numeric_interval_coercion(lhs, op, rhs) {
+                // Interval arithmetic, e.g. Interval * Int32
+                Ok(Signature::uniform(interval))
             } else {
                 plan_err!(
                     "Cannot coerce arithmetic expression {lhs} {op} {rhs} to valid types"
@@ -851,6 +854,37 @@ fn mathematics_numerical_coercion(
         (UInt32, _) | (_, UInt32) => Some(UInt32),
         (UInt16, _) | (_, UInt16) => Some(UInt16),
         (UInt8, _) | (_, UInt8) => Some(UInt8),
+        _ => None,
+    }
+}
+
+/// Returns the output type numerical operations on intervals, where possible.
+fn numeric_interval_coercion(
+    lhs_type: &DataType,
+    op: &Operator,
+    rhs_type: &DataType,
+) -> Option<DataType> {
+    match op {
+        Operator::Multiply => {
+            if matches!(lhs_type, DataType::Interval(_)) && rhs_type.is_numeric() {
+                // `interval '1 day' * 2`
+                Some(lhs_type.clone())
+            } else if matches!(rhs_type, DataType::Interval(_)) && lhs_type.is_numeric() {
+                // `2 * interval '1 day'`
+                Some(rhs_type.clone())
+            } else {
+                None
+            }
+        }
+        Operator::Divide => {
+            if matches!(lhs_type, DataType::Interval(_)) && rhs_type.is_numeric() {
+                // `interval '1 day' / 2`, but `2 / interval '1 day'` is not allowed
+                Some(lhs_type.clone())
+            } else {
+                None
+            }
+        }
+        // as far as I can find, no other operations are allowed between intervals and numerics
         _ => None,
     }
 }
