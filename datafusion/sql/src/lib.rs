@@ -34,6 +34,8 @@
 //! [`LogicalPlan`]: datafusion_expr::logical_plan::LogicalPlan
 //! [`Expr`]: datafusion_expr::expr::Expr
 
+use std::sync::Arc;
+
 mod cte;
 mod expr;
 pub mod parser;
